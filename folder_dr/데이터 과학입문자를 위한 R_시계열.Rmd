@@ -1,0 +1,94 @@
+```{r}
+install.packages("WDI")
+library(WDI)
+gdp <- WDI(country = c("US","CA","GB","DE","CN","JP","SG","IL"),
+           indicator = c("NY.GDP.PCAP.CD","NY.GDP.MKTP.CD"),
+           start = 1960, end = 2011
+           )
+names(gdp) <- c("iso2c", "Country","Year","PerCapGDP" ,"GDP")
+gdp
+str(gdp)
+
+```
+
+```{r}
+head(gdp)
+library(ggplot2)
+library(scales)
+ggplot(gdp, aes(Year, PerCapGDP, color = Country, linetype = Country)) +
+  geom_line() + scale_y_continuous(label =dollar)
+
+
+```
+
+
+```{r}
+install.packages("useful")
+library(useful)
+
+ggplot(gdp, aes(Year, GDP, color=Country, linetype=Country))+ geom_line()+
+  scale_y_continuous(label = multiple_format(extra = dollar, multiple="m"))
+
+
+```
+
+```{r}
+us <- gdp$PerCapGDP[gdp$Country == "United States"]
+us <- ts(us, start = min(gdp$Year), end = max(gdp$Year))
+plot(us, ylab = "Per capital gdp", xlab = "year")
+acf(us)
+pacf(us)
+```
+
+
+```{r}
+x <- c(1,4,8,2,6,6,5,3)
+diff(x , differences = 1)
+diff(x , differences = 2)
+diff(x , differences = 3)
+diff(x, lag=2 )
+
+```
+
+```{r}
+library(forecast)
+ndiffs(x = us)
+diff(us, differences = 2)
+diff(us, lag = 2)
+plot(diff(us, differences = 2))
+plot(diff(us, 2))
+```
+
+```{r}
+usBest <- auto.arima( x= us)
+usBest
+
+```
+
+
+```{r}
+acf(usBest$residuals)
+pacf(usBest$residuals)
+
+```
+
+```{r}
+coef(usBest)
+```
+
+
+```{r}
+predict(usBest, n.ahead = 5, se.fit = TRUE)
+
+
+```
+
+
+```{r}
+theForecast <- forecast(object = usBest, h = 5)
+plot(theForecast)
+
+
+```
+
+
