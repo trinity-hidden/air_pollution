@@ -8,9 +8,9 @@ air <- function(x){
   colnames(y) <- c("날짜", "구", "미세먼지")
 
   # 날짜 변환
-  y$날짜 <- substr(y$날짜, 1, 8)
-  y$날짜 <- as.Date(y$날짜, "%Y%m%d")
-
+  y$날짜 <- substr(y$날짜, 1, 6)
+  y$날짜 <- as.integer(y$날짜)
+  
   # 구만 뽑기
   gu<-strsplit(y$구, " ")
   for(i in 1:length(gu)){
@@ -29,43 +29,46 @@ air <- function(x){
 
 ## 데이터 합치기
 ```{r}
-y14_1<-air("c:/r/미세먼지/2014년 1분기.csv")
-y14_2<-air("c:/r/미세먼지/2014년 2분기.csv")
-y14_3<-air("c:/r/미세먼지/2014년 3분기.csv")
-y14_4<-air("c:/r/미세먼지/2014년 4분기.csv")
-y15_1<-air("c:/r/미세먼지/2015년 1분기.csv")
-y15_2<-air("c:/r/미세먼지/2015년 2분기.csv")
-y15_3<-air("c:/r/미세먼지/2015년 3분기.csv")
-y15_4<-air("c:/r/미세먼지/2015년 4분기.csv")
-y16_1<-air("c:/r/미세먼지/2016년 1분기.csv")
-y16_2<-air("c:/r/미세먼지/2016년 2분기.csv")
-y16_3<-air("c:/r/미세먼지/2016년 3분기.csv")
-y16_4<-air("c:/r/미세먼지/2016년 4분기.csv")
-y17_1<-air("c:/r/미세먼지/2017년 1분기.csv")
-y17_2<-air("c:/r/미세먼지/2017년 2분기.csv")
-y17_3<-air("c:/r/미세먼지/2017년 3분기.csv")
 
-test_data <- rbind(y14_1, y14_2, y14_3, y14_4,
-                   y15_1, y15_2, y15_3, y15_4,
-                   y16_1, y16_2, y16_3, y16_4)
-                   
-real_data <- rbind(y17_1, y17_2, y17_3)
 
+  y14_1<-air("c:/r/미세먼지/2014년 1분기.csv")
+  y14_2<-air("c:/r/미세먼지/2014년 2분기.csv")
+  y14_3<-air("c:/r/미세먼지/2014년 3분기.csv")
+  y14_4<-air("c:/r/미세먼지/2014년 4분기.csv")
+  y15_1<-air("c:/r/미세먼지/2015년 1분기.csv")
+  y15_2<-air("c:/r/미세먼지/2015년 2분기.csv")
+  y15_3<-air("c:/r/미세먼지/2015년 3분기.csv")
+  y15_4<-air("c:/r/미세먼지/2015년 4분기.csv")
+  y16_1<-air("c:/r/미세먼지/2016년 1분기.csv")
+  y16_2<-air("c:/r/미세먼지/2016년 2분기.csv")
+  y16_3<-air("c:/r/미세먼지/2016년 3분기.csv")
+  y16_4<-air("c:/r/미세먼지/2016년 4분기.csv")
+  y17_1<-air("c:/r/미세먼지/2017년 1분기.csv")
+  y17_2<-air("c:/r/미세먼지/2017년 2분기.csv")
+  y17_3<-air("c:/r/미세먼지/2017년 3분기.csv")
+  
+  test_data <- rbind(y14_1, y14_2, y14_3, y14_4,
+                     y15_1, y15_2, y15_3, y15_4,
+                     y16_1, y16_2, y16_3, y16_4)
+                     
+  real_data <- rbind(y17_1, y17_2, y17_3)
 
 ```
 
 
 
 ```{r}
-gn <- test_data[test_data$구 =="강남구", c("미세먼지")]
+gn_test <- test_data[test_data$구 =="강남구", c("미세먼지")]
 gn_real <- real_data[real_data$구 =="강남구", c("미세먼지")]
 
+head(gn_test)
 
 s <- min(test_data$날짜)
 e <- max(test_data$날짜)
 
-gn_ts <- ts(gn ,start = s, end =e)
-
+gn_ts <- ts(gn_test, frequency = 12 , start = 2014, end= 2016)
+gn_test
+gn_ts
 plot(gn_ts)
 
 ```
