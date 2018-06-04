@@ -35,7 +35,7 @@ for (i in b){
     fit<-Arima(time,order=c(0,0,0),seasonal=list(order=c(1,1,0),period=12))
   }
   pred<-forecast(fit,h=9)
-  df_gu<-get(i)[get(i)$년도== '2017',] %>% mutate(예측=pred$mean) %>% mutate(오차=PM10-예측)
+  df_gu<-get(i)[get(i)$년도== '2017',] %>% mutate(as.numeric(예측=pred$mean)) %>% mutate(오차=PM10-예측)
   assign(paste("pre_",i,sep=''),df_gu)
 }
 
@@ -71,4 +71,29 @@ str(er1)
 summary(er1)
 boxplot(er1)
 hist(er1)
+
+
+
+all_gu<-rbind(get(pred_gu[1]),get(pred_gu[2]),get(pred_gu[3]),get(pred_gu[4]),get(pred_gu[5]),get(pred_gu[6]),get(pred_gu[7]),get(pred_gu[8]),
+              get(pred_gu[9]),get(pred_gu[10]),get(pred_gu[11]),get(pred_gu[12]),get(pred_gu[13]),get(pred_gu[14]),get(pred_gu[15]),get(pred_gu[16]),
+              get(pred_gu[17]),get(pred_gu[18]),get(pred_gu[19]),get(pred_gu[20]),get(pred_gu[21]),get(pred_gu[22]),get(pred_gu[23]),get(pred_gu[24]),
+              get(pred_gu[25]))
+
+
+
+abs_mean<-function(x){
+  return(mean(abs(x),na.rm=T))
+}
+
+ag_gu <- aggregate(오차~측정소명,all_gu,abs_mean,na.action=na.omit)
+ag_gu <- ag_gu[order(ag_gu$오차,decreasing=T),]
+ag_mon <- aggregate(오차~달,all_gu,abs_mean,na.action=na.omit)
+ag_mon <- ag_mon[order(ag_mon$오차,decreasing=T),]
+ag_mongu <- aggregate(오차~측정소명+달,all_gu,abs_mean,na.action=na.omit)
+ag_mongu <- ag_mongu[order(ag_mongu$오차,decreasing=T),]
+
+
+
+
+
 
