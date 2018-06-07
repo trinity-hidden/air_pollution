@@ -1,0 +1,253 @@
+## 함수
+```{r}
+air <- function(x){
+  y<-read.csv(x, header = T, stringsAsFactors = F)
+  y$지역 <- substr(y$지역, 1,2)
+  y <- y[y$지역 =="서울", ]
+  y <- y[ , c("측정일시", "주소", "PM10")]    # 필요한 열만 추출
+  colnames(y) <- c("날짜", "구", "미세먼지")
+
+  # 날짜 변환
+  y$날짜 <- substr(y$날짜, 1, 6)
+  y$날짜 <- as.integer(y$날짜)
+  
+  # 구만 뽑기
+  gu<-strsplit(y$구, " ")
+  for(i in 1:length(gu)){
+            y$구[i] <-  gu[[i]][2]
+  }
+  
+  # 구 데이터 정제
+  y$구 <- gsub("강서로45다길", "강서구",y$구)
+  y$구 <- gsub("강서로", "강서구",y$구)
+  
+  df<-aggregate(미세먼지~날짜+구,y, mean)
+  return(df)
+}
+
+```
+
+## 데이터 합치기
+```{r}
+  y14_1<-air("c:/r/미세먼지/2014년 1분기.csv")
+  y14_2<-air("c:/r/미세먼지/2014년 2분기.csv")
+  y14_3<-air("c:/r/미세먼지/2014년 3분기.csv")
+  y14_4<-air("c:/r/미세먼지/2014년 4분기.csv")
+  y15_1<-air("c:/r/미세먼지/2015년 1분기.csv")
+  y15_2<-air("c:/r/미세먼지/2015년 2분기.csv")
+  y15_3<-air("c:/r/미세먼지/2015년 3분기.csv")
+  y15_4<-air("c:/r/미세먼지/2015년 4분기.csv")
+  y16_1<-air("c:/r/미세먼지/2016년 1분기.csv")
+  y16_2<-air("c:/r/미세먼지/2016년 2분기.csv")
+  y16_3<-air("c:/r/미세먼지/2016년 3분기.csv")
+  y16_4<-air("c:/r/미세먼지/2016년 4분기.csv")
+  y17_1<-air("c:/r/미세먼지/2017년 1분기.csv")
+  y17_2<-air("c:/r/미세먼지/2017년 2분기.csv")
+  y17_3<-air("c:/r/미세먼지/2017년 3분기.csv")
+  
+  test_data <- rbind(y14_1, y14_2, y14_3, y14_4,
+                     y15_1, y15_2, y15_3, y15_4,
+                     y16_1, y16_2, y16_3, y16_4)
+                     
+  real_data <- rbind(y17_1, y17_2, y17_3)
+```
+
+
+
+```{r}
+unique(test_data$구)
+
+test_gu <- test_data[test_data$구 =="강서구", c("미세먼지")]
+real_gu <- real_data[real_data$구 =="강서구", c("미세먼지")]
+ts_gu <- ts(test_gu , frequency = 12 ,start = 2014)
+plot(ts_gu)
+
+```
+
+
+```{r}
+acf(ts_gu)
+pacf(ts_gu)
+
+```
+
+
+```{r}
+library(forecast)
+gnBest <- auto.arima(x= ts_gu)
+gnBest
+acf(gnBest$residuals)
+pacf(gnBest$residuals)
+
+```
+
+
+```{r}
+coef(gnBest)
+pr <- predict(gnBest, n.ahead = 9, se.fit = TRUE)
+
+## 예측값 비교
+pr
+real_gu
+
+## 실제값과 예측값의 차이 계산
+
+pr1 <- as.vector(pr$pred)
+for (i in 1:9) {
+print( paste(i,"월: 약 " , round(abs(pr1 - real_gu)[i])," 차이" ,sep="")  )
+}
+
+# 예측 그래프
+fore<- forecast(object=gnBest, h = 9)
+plot(fore)
+
+```
+
+
+# 시간대별 함수
+```{r}
+
+## 시간대별 미세먼지 함수
+air_d <- function(x){
+  y<-read.csv(x, header = T, stringsAsFactors = F)
+  y$지역 <- substr(y$지역, 1,2)
+  y <- y[y$지역 =="서울", ]
+  y <- y[ , c("측정일시", "주소", "PM10")]    # 필요한 열만 추출
+  colnames(y) <- c("날짜", "구", "미세먼지")
+
+  # 날짜 변환
+  y$날짜 <- as.integer(y$날짜)
+  
+  # 구만 뽑기
+  gu<-strsplit(y$구, " ")
+  for(i in 1:length(gu)){
+            y$구[i] <-  gu[[i]][2]
+  }
+  
+  # 구 데이터 정제
+  y$구 <- gsub("강서로45다길", "강서구",y$구)
+  y$구 <- gsub("강서로", "강서구",y$구)
+  
+  df<-aggregate(미세먼지~날짜+구,y, mean)
+  return(df)
+}
+
+
+```
+
+## 데이터 합치기
+```{r}
+  y14_1_d<-air_d("c:/r/미세먼지/2014년 1분기.csv")
+  y14_2_d<-air_d("c:/r/미세먼지/2014년 2분기.csv")
+  y14_3_d<-air_d("c:/r/미세먼지/2014년 3분기.csv")
+  y14_4_d<-air_d("c:/r/미세먼지/2014년 4분기.csv")
+  y15_1_d<-air_d("c:/r/미세먼지/2015년 1분기.csv")
+  y15_2_d<-air_d("c:/r/미세먼지/2015년 2분기.csv")
+  y15_3_d<-air_d("c:/r/미세먼지/2015년 3분기.csv")
+  y15_4_d<-air_d("c:/r/미세먼지/2015년 4분기.csv")
+  y16_1_d<-air_d("c:/r/미세먼지/2016년 1분기.csv")
+  y16_2_d<-air_d("c:/r/미세먼지/2016년 2분기.csv")
+  y16_3_d<-air_d("c:/r/미세먼지/2016년 3분기.csv")
+  y16_4_d<-air_d("c:/r/미세먼지/2016년 4분기.csv")
+  y17_1_d<-air_d("c:/r/미세먼지/2017년 1분기.csv")
+  y17_2_d<-air_d("c:/r/미세먼지/2017년 2분기.csv")
+  y17_3_d<-air_d("c:/r/미세먼지/2017년 3분기.csv")
+  
+  test_data_d <- rbind(y14_1_d, y14_2_d, y14_3_d, y14_4_d,
+                     y15_1_d, y15_2_d, y15_3_d, y15_4_d,
+                     y16_1_d, y16_2_d, y16_3_d, y16_4_d)
+                     
+  real_data_d <- rbind(y17_1_d, y17_2_d, y17_3_d)
+
+```
+
+
+# 미세먼지가 높은 날짜 검색하기(ex: 강남구)
+```{r}
+
+test_gu_d <- test_data_d[test_data_d$구 =="구로구", ]
+real_gu_d <- real_data_d[real_data_d$구 =="구로구", ]
+
+# 일별로 변환
+test_gu_d$날짜 <- as.Date(substr(test_gu_d$날짜, 1, 8), "%Y%m%d")
+
+test_gu_d[test_gu_d$미세먼지 >= 500, ]
+
+# 강남구의 경우 위에 분석한 결과를 보면, 4월과 8월이 실제값과 예측치 차이가 많이 났음
+# 그래서 4월과 8월의 raw데이터 중에 미세먼지 수치가 과도하게 높게 측정됐을 거란 가정을 하고 일별로 분석해서 살펴보니 높은 수치의 미세먼지 데이터가 많이 분포한 달은 2월이었고 4월이 두번째, 8월은 아예 없었음
+# 가장 수치가 많았던 2월은 오차가 거의 없었기 때문에 이 가정은 틀린것으로 판단
+# 따라서 과도하게 높게 측정된 raw 데이터가 아리마 모델을 이용한 예측치에 영향을 주기는 어려울 것이라 판단
+# 그래서 예측치의 오차는 다른 원인에 있을 것이다.
+# p.s : 강남구 뿐만 아니라 다른 구들도 예측치와 실제값의 오차가 4월과 8월이 거의 높게 나옴
+# p.s : 모두 살펴 보진 않았지만 대부분 구들의 raw 데이터를 살펴보면 매우 높은 수치의 미세먼지 데이터가 2월달에 많이 분포.
+```
+
+
+#시간대별 함수
+```{r}
+air_h <- function(x){
+  y<-read.csv(x, header = T, stringsAsFactors = F)
+  y$지역 <- substr(y$지역, 1,2)
+  y <- y[y$지역 =="서울", ]
+  y <- y[ , c("측정일시", "주소", "PM10")]    # 필요한 열만 추출
+  colnames(y) <- c("날짜", "구", "미세먼지")
+
+  # 날짜 변환
+  y$날짜 <- as.integer(y$날짜)
+  
+  # 구만 뽑기
+  gu<-strsplit(y$구, " ")
+  for(i in 1:length(gu)){
+            y$구[i] <-  gu[[i]][2]
+  }
+  
+  # 구 데이터 정제
+  y$구 <- gsub("강서로45다길", "강서구",y$구)
+  y$구 <- gsub("강서로", "강서구",y$구)
+  
+  df<-aggregate(미세먼지~날짜+구,y, mean)
+  return(df)
+}
+
+```
+
+
+```{r}
+  y14_1_h<-air_h("c:/r/미세먼지/2014년 1분기.csv")
+  y14_2_h<-air_h("c:/r/미세먼지/2014년 2분기.csv")
+  y14_3_h<-air_h("c:/r/미세먼지/2014년 3분기.csv")
+  y14_4_h<-air_h("c:/r/미세먼지/2014년 4분기.csv")
+  y15_1_h<-air_h("c:/r/미세먼지/2015년 1분기.csv")
+  y15_2_h<-air_h("c:/r/미세먼지/2015년 2분기.csv")
+  y15_3_h<-air_h("c:/r/미세먼지/2015년 3분기.csv")
+  y15_4_h<-air_h("c:/r/미세먼지/2015년 4분기.csv")
+  y16_1_h<-air_h("c:/r/미세먼지/2016년 1분기.csv")
+  y16_2_h<-air_h("c:/r/미세먼지/2016년 2분기.csv")
+  y16_3_h<-air_h("c:/r/미세먼지/2016년 3분기.csv")
+  y16_4_h<-air_h("c:/r/미세먼지/2016년 4분기.csv")
+  y17_1_h<-air_h("c:/r/미세먼지/2017년 1분기.csv")
+  y17_2_h<-air_h("c:/r/미세먼지/2017년 2분기.csv")
+  y17_3_h<-air_h("c:/r/미세먼지/2017년 3분기.csv")
+  
+  data_h <-rbind(y14_1_h, y14_2_h, y14_3_h, y14_4_h,
+                 y15_1_h, y15_2_h, y15_3_h, y15_4_h,
+                 y16_1_h, y16_2_h, y16_3_h, y16_4_h,
+                 y17_1_h, y17_2_h, y17_3_h)
+  
+```
+
+# 중랑구 시간대별 미세먼지 농도
+```{r}
+ jung <- data_h[data_h$구 =="중랑구", ]
+ jung$날짜 <- as.integer(substr(jung$날짜,9,10))
+ colnames(jung) <- c("time","구","미세먼지")
+ df<-aggregate(미세먼지~time , jung, mean)
+ 
+ library(ggplot2)
+ 
+ ggplot(df, aes(x= time, y= 미세먼지))+
+   geom_line()+
+    labs(title= "중랑구 시간대별 미세먼지 농도")
+ 
+```
+
