@@ -50,6 +50,8 @@ air <- function(x){
                      y16_1, y16_2, y16_3, y16_4)
                      
   real_data <- rbind(y17_1, y17_2, y17_3)
+  
+  
 ```
 
 
@@ -61,6 +63,7 @@ test_gu <- test_data[test_data$구 =="강서구", c("미세먼지")]
 real_gu <- real_data[real_data$구 =="강서구", c("미세먼지")]
 ts_gu <- ts(test_gu , frequency = 12 ,start = 2014)
 plot(ts_gu)
+
 
 ```
 
@@ -83,23 +86,21 @@ pacf(gnBest$residuals)
 
 
 ```{r}
-coef(gnBest)
-pr <- predict(gnBest, n.ahead = 9, se.fit = TRUE)
-
-## 예측값 비교
-pr
-real_gu
-
-## 실제값과 예측값의 차이 계산
-
-pr1 <- as.vector(pr$pred)
-for (i in 1:9) {
-print( paste(i,"월: 약 " , round(abs(pr1 - real_gu)[i])," 차이" ,sep="")  )
-}
 
 # 예측 그래프
 fore<- forecast(object=gnBest, h = 9)
 plot(fore)
+
+## 예측값과 실제값 비교
+fore$mean
+real_gu
+
+## 실제값과 예측값의 차이 계산
+
+pr <- as.vector(fore$mean)
+for (i in 1:9) {
+print( paste(i,"월: 약 " , round(abs(pr - real_gu)[i])," 차이" ,sep="")  )
+}
 
 ```
 
@@ -185,15 +186,16 @@ test_gu_d[test_gu_d$미세먼지 >= 500, ]
 
 #시간대별 함수
 ```{r}
+
 air_h <- function(x){
   y<-read.csv(x, header = T, stringsAsFactors = F)
   y$지역 <- substr(y$지역, 1,2)
   y <- y[y$지역 =="서울", ]
   y <- y[ , c("측정일시", "주소", "PM10")]    # 필요한 열만 추출
-  colnames(y) <- c("날짜", "구", "미세먼지")
+  colnames(y) <- c("시간", "구", "미세먼지")
 
-  # 날짜 변환
-  y$날짜 <- as.integer(y$날짜)
+  # 시간 변환
+  y$시간 <- as.integer(substr(y$시간, 9, 10))
   
   # 구만 뽑기
   gu<-strsplit(y$구, " ")
@@ -205,13 +207,13 @@ air_h <- function(x){
   y$구 <- gsub("강서로45다길", "강서구",y$구)
   y$구 <- gsub("강서로", "강서구",y$구)
   
-  df<-aggregate(미세먼지~날짜+구,y, mean)
+  df<-aggregate(미세먼지~시간+구,y, mean)
   return(df)
 }
 
 ```
 
-
+# 데이터 통합
 ```{r}
   y14_1_h<-air_h("c:/r/미세먼지/2014년 1분기.csv")
   y14_2_h<-air_h("c:/r/미세먼지/2014년 2분기.csv")
@@ -233,21 +235,18 @@ air_h <- function(x){
                  y15_1_h, y15_2_h, y15_3_h, y15_4_h,
                  y16_1_h, y16_2_h, y16_3_h, y16_4_h,
                  y17_1_h, y17_2_h, y17_3_h)
-  
+
 ```
 
-# 중랑구 시간대별 미세먼지 농도
+
+
+# 각 구별 시간대 미세먼지 농도
 ```{r}
- jung <- data_h[data_h$구 =="중랑구", ]
- jung$날짜 <- as.integer(substr(jung$날짜,9,10))
- colnames(jung) <- c("time","구","미세먼지")
- df<-aggregate(미세먼지~time , jung, mean)
- 
- library(ggplot2)
- 
- ggplot(df, aes(x= time, y= 미세먼지))+
+ df_h <- aggregate(미세먼지~시간+구, data_h, mean)
+ ggplot(df_h, aes(x=시간, y=미세먼지, group=구, col= 구))+
    geom_line()+
-    labs(title= "중랑구 시간대별 미세먼지 농도")
+     facet_wrap(~구)+
+       labs(title= "각 구별 시간대 미세먼지 농도")
  
 ```
 
