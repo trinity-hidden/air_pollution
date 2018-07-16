@@ -1,3 +1,12 @@
+## 라이브러리
+```{r}
+library(forecast)
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+
+```
+
 ## 함수
 ```{r}
 air <- function(x){
@@ -5,11 +14,11 @@ air <- function(x){
   y$지역 <- substr(y$지역, 1,2)
   y <- y[y$지역 =="서울", ]
   y <- y[ , c("측정일시", "주소", "PM10")]    # 필요한 열만 추출
-  colnames(y) <- c("날짜", "구", "미세먼지")
+  colnames(y) <- c("월", "구", "미세먼지")
 
   # 날짜 변환
-  y$날짜 <- substr(y$날짜, 1, 6)
-  y$날짜 <- as.integer(y$날짜)
+  y$월 <- substr(y$월, 1, 6)
+  y$월 <- as.integer(y$월)
   
   # 구만 뽑기
   gu<-strsplit(y$구, " ")
@@ -21,7 +30,7 @@ air <- function(x){
   y$구 <- gsub("강서로45다길", "강서구",y$구)
   y$구 <- gsub("강서로", "강서구",y$구)
   
-  df<-aggregate(미세먼지~날짜+구,y, mean)
+  df<-aggregate(미세먼지~월+구,y, mean)
   return(df)
 }
 
@@ -48,60 +57,85 @@ air <- function(x){
   test_data <- rbind(y14_1, y14_2, y14_3, y14_4,
                      y15_1, y15_2, y15_3, y15_4,
                      y16_1, y16_2, y16_3, y16_4)
-                     
+  
   real_data <- rbind(y17_1, y17_2, y17_3)
+
+  
+  test_data <- arrange(test_data, 구, 월)
+  real_data <- arrange(real_data, 구, 월)
   
   
 ```
 
-
-
-```{r}
-unique(test_data$구)
-
-test_gu <- test_data[test_data$구 =="강서구", c("미세먼지")]
-real_gu <- real_data[real_data$구 =="강서구", c("미세먼지")]
-ts_gu <- ts(test_gu , frequency = 12 ,start = 2014)
-plot(ts_gu)
-
-
-```
-
-
-```{r}
-acf(ts_gu)
-pacf(ts_gu)
-
-```
-
-
-```{r}
-library(forecast)
-gnBest <- auto.arima(x= ts_gu)
-gnBest
-acf(gnBest$residuals)
-pacf(gnBest$residuals)
-
-```
-
-
 ```{r}
 
-# 예측 그래프
-fore<- forecast(object=gnBest, h = 9)
-plot(fore)
+#### 2017년도 각 구별 1-9월 미세먼지 예측값 (Arima 모델 이용)
+df_pred_total <- data.frame(월= NULL, 구=NULL, 예측값=NULL)
+seoul_gu <- unique(test_data$구)
+for (i in seoul_gu){
 
-## 예측값과 실제값 비교
-fore$mean
-real_gu
+  test_gu <- test_data[test_data$구 ==i, c("미세먼지")]
+  ts_gu <- ts(test_gu , frequency = 12 ,start = 2014)
+  gnBest <- auto.arima(x= ts_gu)
+  fore<- forecast(object=gnBest, h = 9)
+  pr <- as.vector(fore$mean)
 
-## 실제값과 예측값의 차이 계산
+  df_pred <- data.frame(
+    월 = as.character(rep(1:9)),
+    구 = rep(i, each=9),
+    예측값 = pr )
 
-pr <- as.vector(fore$mean)
-for (i in 1:9) {
-print( paste(i,"월: 약 " , round(abs(pr - real_gu)[i])," 차이" ,sep="")  )
+  df_pred_total <- rbind(df_pred_total, df_pred)
 }
+smoke_pred<-ggplot(df_pred_total, aes(x=월, y=예측값, group=구, col=구))+
+              geom_line()+
+                facet_wrap(~구)+
+                  labs(title="2017년도 각 구별 1-9월 미세먼지 예측값")
 
+smoke_pred_1<-ggplot(df_pred_total, aes(x=월, y=예측값, group=구, col=구))+
+              geom_line()+
+                  labs(title="2017년도 각 구별 1-9월 미세먼지 예측값")
+
+#### 2017년도 각 구별 1-9월 미세먼지 월
+
+real_data$월<- gsub( 20170, "",real_data$월)
+smoke_real<- ggplot(real_data, aes(x=월, y=미세먼지, group=구, col=구))+
+              geom_line()+
+                facet_wrap(~구)+
+                  labs(title="2017년도 각 구별 1-9월 미세먼지 실제값")
+
+smoke_real_1<- ggplot(real_data, aes(x=월, y=미세먼지, group=구, col=구))+
+                  geom_line()+
+                    labs(title="2017년도 각 구별 1-9월 미세먼지 실제값")
+
+### 2017년도 각 구별 1-9월 미세먼지 예측 오차
+
+differ <- df_pred_total$예측값 - real_data$미세먼지
+
+
+df_differ <- data.frame(월= real_data$월,
+             구 = real_data$구,
+             차이값= differ)
+
+  
+smoke_differ  <- ggplot(df_differ, aes(x=월, y=차이값, group=구, col=구))+
+                  geom_line()+
+                    facet_wrap(~구)+
+                      labs(title="2017년도 각 구별 1-9월 미세먼지 예측 오차")
+
+smoke_differ_1<-ggplot(df_differ, aes(x=월, y=차이값, group=구, col=구))+
+                 geom_line()+
+                  labs(title="2017년도 각 구별 1-9월 미세먼지 예측 오차(예측값 - 실제값)")
+
+# 구별 분포도
+smoke_pred
+smoke_real
+smoke_differ
+
+## 하나의 분포도
+smoke_pred_1
+smoke_real_1
+smoke_differ_1
 ```
 
 
@@ -150,39 +184,67 @@ air_d <- function(x){
   y16_2_d<-air_d("c:/r/미세먼지/2016년 2분기.csv")
   y16_3_d<-air_d("c:/r/미세먼지/2016년 3분기.csv")
   y16_4_d<-air_d("c:/r/미세먼지/2016년 4분기.csv")
-  y17_1_d<-air_d("c:/r/미세먼지/2017년 1분기.csv")
-  y17_2_d<-air_d("c:/r/미세먼지/2017년 2분기.csv")
-  y17_3_d<-air_d("c:/r/미세먼지/2017년 3분기.csv")
+  
   
   test_data_d <- rbind(y14_1_d, y14_2_d, y14_3_d, y14_4_d,
                      y15_1_d, y15_2_d, y15_3_d, y15_4_d,
                      y16_1_d, y16_2_d, y16_3_d, y16_4_d)
                      
-  real_data_d <- rbind(y17_1_d, y17_2_d, y17_3_d)
+  
+  test_data_d <- arrange(test_data_d, 구, 날짜)
+  
 
 ```
 
-
-# 미세먼지가 높은 날짜 검색하기(ex: 강남구)
 ```{r}
+## 가독성을 위해서 시간, 일 단위 제거
+test_data_d$날짜 <- substr(test_data_d$날짜, 1, 6)
 
-test_gu_d <- test_data_d[test_data_d$구 =="구로구", ]
-real_gu_d <- real_data_d[real_data_d$구 =="구로구", ]
+max(test_data_d$미세먼지)  # 미세먼지 최대수치는 1033
+min(test_data_d$미세먼지)  # 미세먼지 최소 수치는 1
 
-# 일별로 변환
-test_gu_d$날짜 <- as.Date(substr(test_gu_d$날짜, 1, 8), "%Y%m%d")
+## 미세먼지 200이상을 이상값이라고 가정하고 200이상인 수치만 뽑기
+df_200 <- test_data_d[test_data_d$미세먼지 >=200, ]
 
-test_gu_d[test_gu_d$미세먼지 >= 500, ]
+## 미세먼지수치 등급 매기기
+df_200$미세먼지수치 <-ifelse( df_200$미세먼지>=200 & df_200$미세먼지 < 500,"200~400",
+                ifelse( df_200$미세먼지>=500 & df_200$미세먼지 < 800, "500~700",
+                  ifelse( df_200$미세먼지>=800, "800~1033" , df_200$미세먼지)))     
 
-# 강남구의 경우 위에 분석한 결과를 보면, 4월과 8월이 실제값과 예측치 차이가 많이 났음
-# 그래서 4월과 8월의 raw데이터 중에 미세먼지 수치가 과도하게 높게 측정됐을 거란 가정을 하고 일별로 분석해서 살펴보니 높은 수치의 미세먼지 데이터가 많이 분포한 달은 2월이었고 4월이 두번째, 8월은 아예 없었음
-# 가장 수치가 많았던 2월은 오차가 거의 없었기 때문에 이 가정은 틀린것으로 판단
-# 따라서 과도하게 높게 측정된 raw 데이터가 아리마 모델을 이용한 예측치에 영향을 주기는 어려울 것이라 판단
-# 그래서 예측치의 오차는 다른 원인에 있을 것이다.
-# p.s : 강남구 뿐만 아니라 다른 구들도 예측치와 실제값의 오차가 4월과 8월이 거의 높게 나옴
-# p.s : 모두 살펴 보진 않았지만 대부분 구들의 raw 데이터를 살펴보면 매우 높은 수치의 미세먼지 데이터가 2월달에 많이 분포.
+
+df_200$날짜 <- substr(df_200$날짜, 5, 6)
+df_200$미세먼지 <- 1
+
+
+## 월별 미세먼지 건수 
+df_200_total<- aggregate(미세먼지~미세먼지수치+날짜, df_200, sum)
+colnames(df_200_total) <- c("미세먼지수치", "월", "건수")
+
+ggplot(df_200_total, aes(x=월, y=건수, fill=미세먼지수치))+
+  geom_bar(stat="identity")+
+     geom_text(aes(label = 건수 ),
+               position = position_stack(vjust=0.5) )
+
+####각 구별 월 미세먼지 건수
+df_200_gu<- aggregate(미세먼지~미세먼지수치+날짜+구, df_200, sum)
+colnames(df_200_gu) <- c("미세먼지수치", "월","구","건수")
+
+ggplot(df_200_gu, aes(x=월, y=건수, group=구,fill=미세먼지수치))+
+  geom_bar(stat="identity")+
+   facet_wrap(~구)
+     
+####
+위에 분석한 결과를 보면, 4,5,8월의 오차가 큼
+ 그래서 4,5,8월 raw데이터의 미세먼지 수치가 높을거란 가정을 하고 월별로 미세먼치 수치가  높은 건수를 분석함
+ 분결 결과, 수치가 높은 미세먼지가 많이 분포한 달은 2월이었고 3월이 두번째, 4월이 세번째였음. 8월은 가장 낮음.
+ 가장 수치가 많았던 2월은 오차가 거의 없었기 때문에 이 가정은 틀린것으로 판단
+ 따라서 과도하게 높게 측정된 미세먼지 수치의 raw 데이터가 분석 모델에 영향을 주기는 힘들거라 판단.
+ 그래서 오차의 원인은 raw데이터가 아니라 arima 모델의 한계라고 생각.
+
+
 ```
 
+### 시간대별 미세먼지 수치 구하기
 
 #시간대별 함수
 ```{r}
@@ -211,6 +273,7 @@ air_h <- function(x){
   return(df)
 }
 
+
 ```
 
 # 데이터 통합
@@ -235,17 +298,25 @@ air_h <- function(x){
                  y15_1_h, y15_2_h, y15_3_h, y15_4_h,
                  y16_1_h, y16_2_h, y16_3_h, y16_4_h,
                  y17_1_h, y17_2_h, y17_3_h)
-
+ df_h <- aggregate(미세먼지~시간+구, data_h, mean)
+ 
+ 
+  
 ```
 
 
 
 # 각 구별 시간대 미세먼지 농도
 ```{r}
- df_h <- aggregate(미세먼지~시간+구, data_h, mean)
- ggplot(df_h, aes(x=시간, y=미세먼지, group=구, col= 구))+
+###
+ggplot(df_h, aes(x=시간, y=미세먼지, group=구, col= 구))+
    geom_line()+
      facet_wrap(~구)+
+       labs(title= "각 구별 시간대 미세먼지 농도")
+
+###
+ggplot(df_h, aes(x=시간, y=미세먼지, group=구, col= 구))+
+   geom_line()+
        labs(title= "각 구별 시간대 미세먼지 농도")
  
 ```
